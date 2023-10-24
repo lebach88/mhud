@@ -11,17 +11,48 @@ df = pd.read_csv('../data/car.data', names = ["buying", "maintenance", "doors", 
 # safety ->      0: low,      1: med,    2: high
 #classification  0:unacc,     1: acc,    2: vgood,  3:good,
 
-for column in df.columns:
-    if column != 'classification':
-        df[column], _ = pd.factorize(df[column])
-
-#classification  0:unacc,     1: acc,    2: good,  3:vgood,
-
-cfc = {'unacc': 0, 'acc': 1, 'good': 2, 'vgood': 3}
-df['classification'] = df['classification'].map(cfc)
-
 X = df.drop('classification', axis=1)
-y = df['classification']
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.compose import ColumnTransformer
+one_hot = OneHotEncoder()
+
+encoder = ColumnTransformer(transformers=[
+    ('OneHot', one_hot, [0,1,2,3,4,5])
+], remainder='passthrough')
+
+encoder_result = encoder.fit_transform(X)
+
+X = pd.DataFrame(encoder_result.toarray())
+
+def dauvao(num):
+    if num == 1 :
+        X = df.drop('classification', axis=1)
+        from sklearn.preprocessing import OneHotEncoder
+        from sklearn.compose import ColumnTransformer
+        one_hot = OneHotEncoder()
+
+        encoder = ColumnTransformer(transformers=[
+            ('OneHot', one_hot, [0,1,2,3,4,5])
+        ], remainder='passthrough')
+
+        encoder_result = encoder.fit_transform(X)
+
+        X = pd.DataFrame(encoder_result.toarray())
+        y = df['classification']
+        return X , y
+    else :
+        for column in df.columns:
+            if column != 'classification':
+                df[column], _ = pd.factorize(df[column])
+
+        #classification  0:unacc,     1: acc,    2: good,  3:vgood,
+
+        cfc = {'unacc': 0, 'acc': 1, 'good': 2, 'vgood': 3}
+        df['classification'] = df['classification'].map(cfc)
+
+        X = df.drop('classification', axis=1)
+        y = df['classification']
+        return X , y
 
 def chia_k_fold(nhan,k):
     soluong = len(nhan)
@@ -76,8 +107,57 @@ def danh_gia_trung_binh(model, X , nhan , k):
         'f1': sum(mang_f1) / len(mang_f1)
     }
 
-model = KNeighborsClassifier()
-k = 5
-kq = danh_gia_trung_binh(model,X,y,k)
+# k = 10
+# print("KNN :",danh_gia_trung_binh(KNeighborsClassifier(),X,y,k))
+# from sklearn.ensemble import RandomForestClassifier
+# from sklearn.naive_bayes import GaussianNB
+# print("Bayes :",danh_gia_trung_binh(GaussianNB(),X,y,k))
+# from sklearn.tree import DecisionTreeClassifier
+# print("Tress :",danh_gia_trung_binh( DecisionTreeClassifier(),X,y,k))
 
-print(kq)
+
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import NearestCentroid
+from sklearn.naive_bayes import GaussianNB
+import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
+from statistics import mean, stdev
+models = {
+    'Naive Bayes': GaussianNB(),
+    'KNN': NearestCentroid(),
+    'Decision Tree': DecisionTreeClassifier(),
+}
+
+metrics = ['accuracy', 'precision', 'recall', 'f1']
+
+#1: là chuẩn hóa theo ông nội kia
+X , y = dauvao(1)
+
+def plot_metric(metric,sta,end):
+    for model in models.keys():
+        averages = []
+        for k in range(sta, end+1):
+          results = danh_gia_trung_binh(models[model], X, y, k)
+          averages.append(results[metric])
+        # print(model,":",mean(averages))
+
+for metric in metrics:
+  # print(metric)
+  plot_metric(metric,5,20)
+
+results = {}
+for name, model in models.items():
+    results[name] = danh_gia_trung_binh(model, X, y, 28)
+
+for metric in metrics:
+    print(f'-----< {metric} >-----')
+
+    for model, result in results.items():
+        # mean_value = mean(result[metric])
+        # stdev_value = stdev(result[metric])
+        #
+        # print(f'# {model}\nME: {stdev_value}\nDES: {stdev_value}\n')
+
+        value = result[metric]
+
+        print(f'# {model}\n{metric.upper()}: {value}\n')
